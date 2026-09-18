@@ -1,7 +1,7 @@
 import styles from "./App.module.css";
 
 import { useState } from "react";
-import { Toaster, toast } from "react-hot-toast";
+import { Toaster } from "react-hot-toast";
 
 import SearchBar from "../SearchBar/SearchBar";
 import MovieGrid from "../MovieGrid/MovieGrid";
@@ -12,6 +12,7 @@ import MovieModal from "../MovieModal/MovieModal";
 import { fetchMovies } from "../../services/movieService";
 import type { Movie } from "../../types/movie";
 
+import { useQuery } from "@tanstack/react-query";
 import ReactPaginateModule from "react-paginate";
 import type { ReactPaginateProps } from "react-paginate";
 import type { ComponentType } from "react";
@@ -25,34 +26,29 @@ const ReactPaginate = (
 ).default;
 
 export default function App() {
-  const [movies, setMovies] = useState<Movie[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isError, setIsError] = useState<boolean>(false);
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 
   const [page, setPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(0);
 
-  const handleSearch = async (query: string) => {
-    try {
-      setMovies([]);
-      setIsError(false);
-      setIsLoading(true);
+  const [query, setQuery] = useState<string>("");
 
-      const data = await fetchMovies(query);
+  const {
+    data,
+    isLoading: isQueryLoading,
+    isError: isQueryError,
+  } = useQuery({
+    queryKey: ["movies", query, page],
+    queryFn: () => fetchMovies(query, page),
+    enabled: query.length > 0,
+  });
 
-      if (data.results.length === 0) {
-        toast.error("No movies found for your request.");
-        return;
-      }
+  const totalPages = data?.total_pages || 0;
 
-      setMovies(data.results);
-    } catch (error) {
-      setIsError(true);
-      console.log("Error fetching movies:", error);
-    } finally {
-      setIsLoading(false);
-    }
+  const moviesList = data?.results || [];
+
+  const handleSearch = async (newQuery: string) => {
+    setQuery(newQuery);
+    setPage(1);
   };
 
   return (
@@ -63,12 +59,26 @@ export default function App() {
 
       <main className={styles.container}></main>
 
-      {isLoading && <Loader />}
+      {isQueryLoading && <Loader />}
 
-      {isError && <ErrorMessage />}
+      {isQueryError && <ErrorMessage />}
 
-      {movies.length > 0 && !isLoading && (
-        <MovieGrid movies={movies} onSelect={setSelectedMovie} />
+      {moviesList.length > 0 && !isQueryLoading && (
+        <MovieGrid movies={moviesList} onSelect={setSelectedMovie} />
+      )}
+
+      {totalPages > 1 && (
+        <ReactPaginate
+          pageCount={totalPages}
+          pageRangeDisplayed={5}
+          marginPagesDisplayed={1}
+          onPageChange={({ selected }) => setPage(selected + 1)}
+          forcePage={page - 1}
+          containerClassName={styles.pagination}
+          activeClassName={styles.active}
+          nextLabel="→"
+          previousLabel="←"
+        />
       )}
 
       {selectedMovie && (

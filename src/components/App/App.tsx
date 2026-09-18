@@ -34,7 +34,7 @@ export default function App() {
 
   const {
     data,
-    isPending: isQueryPending,
+    isFetching: isQueryFetching,
     isError: isQueryError,
     isSuccess,
   } = useQuery({
@@ -67,11 +67,11 @@ export default function App() {
 
       <main className={styles.container}></main>
 
-      {isQueryPending && <Loader />}
+      {isQueryFetching && <Loader />}
 
       {isQueryError && <ErrorMessage />}
 
-      {moviesList.length > 0 && !isQueryPending && (
+      {moviesList.length > 0 && !isQueryFetching && (
         <MovieGrid movies={moviesList} onSelect={setSelectedMovie} />
       )}
 
